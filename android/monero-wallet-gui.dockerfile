@@ -164,8 +164,10 @@ RUN cd ${WORKSPACE} \
 ENV PATH ${WORKSPACE}/Qt-${QT_VERSION}/bin:$PATH
 
 RUN cd ${WORKSPACE} \
-    && git clone https://github.com/MoroccanMalinois/monero-core.git -b android\
+    && git clone https://github.com/monero-project/monero-core.git \
     && cd monero-core \
+    && git fetch origin pull/370/head:pr-370 \
+    && git checkout pr-370 \
     && git clone https://github.com/monero-project/monero.git \
     && cd monero \
     && git fetch origin pull/1510/head:pr-1510 \
