@@ -78,9 +78,109 @@ RUN cd ${WORKSPACE}/qt5 \
     && cd qttools \
     && git apply androiddeployqt.patch \
     && cd ${WORKSPACE}/qt5 \
-    && make -j4
+    && make -j4 \
+    && make install
+
+ENV PATH ${WORKSPACE}/qt5/5.7/android_armv7/bin:$PATH
+
+#Setup Android toolchain
+ENV TOOLCHAIN_DIR ${WORKSPACE}/toolchain-arm
+RUN $ANDROID_NDK_ROOT/build/tools/make_standalone_toolchain.py \
+         --arch arm \
+         --api 21 \
+         --install-dir $TOOLCHAIN_DIR \
+         --stl=libc++
+ENV SYSROOT $TOOLCHAIN_DIR/sysroot
+ENV PATH $PATH:$TOOLCHAIN_DIR/bin:$SYSROOT/usr/local/bin
+
+#INSTALL BOOST
+ENV BOOST_VERSION 1_62_0
+ENV BOOST_VERSION_DOT 1.62.0
+#COPY boost_${BOOST_VERSION}.tar.bz2 ${WORKSPACE}/boost_${BOOST_VERSION}.tar.bz2
+RUN cd ${WORKSPACE} \
+    && wget https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION_DOT}/boost_${BOOST_VERSION}.tar.bz2/download -O  boost_${BOOST_VERSION}.tar.bz2\
+    && tar -xvf boost_${BOOST_VERSION}.tar.bz2 \
+    && rm -f ${WORKSPACE}/boost_${BOOST_VERSION}.tar.bz2
+
+RUN echo "import tools ; \
+using gcc : arm : arm-linux-androideabi-clang++ ; \
+option.set keep-going : false ; " > ~/user-config.jam
+
+RUN cd ${WORKSPACE}/boost_${BOOST_VERSION} \
+    && ./bootstrap.sh --prefix=${WORKSPACE}/boost  --with-libraries=serialization,thread,system,date_time,filesystem,regex,chrono,program_options \
+    && ./b2 toolset=gcc-arm link=static install
+
+#INSTALL cmake
+# don't use 3.7 : https://github.com/android-ndk/ndk/issues/254
+ENV CMAKE_VERSION 3.6.3
+RUN cd ${WORKSPACE} \
+    && wget https://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
+    && tar -xvzf ${WORKSPACE}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
+    && rm -f ${WORKSPACE}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz
+ENV PATH ${WORKSPACE}/cmake-${CMAKE_VERSION}-Linux-x86_64/bin:$PATH
+
+RUN apt-get update && apt-get install -y automake curl file pkg-config 
+
+# Configure toolchain path
+#ENV CROSS_COMPILE arm-linux-androideabi
+ENV CC arm-linux-androideabi-clang
+ENV CXX arm-linux-androideabi-clang++
+ENV AR arm-linux-androideabi-ar
+ENV AS arm-linux-androideabi-as
+ENV LD arm-linux-androideabi-ld
+ENV RANLIB arm-linux-androideabi-ranlib
+ENV NM arm-linux-androideabi-nm
+ENV STRIP arm-linux-androideabi-strip
+ENV CHOST arm-linux-androideabi
+ENV ARCH armv7-a
+ENV CXXFLAGS -std=c++11
+
+# download, configure and make Zlib
+RUN cd ${WORKSPACE} \
+    && curl -O http://zlib.net/zlib-1.2.8.tar.gz \
+    && tar -xzf zlib-1.2.8.tar.gz \
+    && rm zlib-1.2.8.tar.gz \
+    && mv zlib-1.2.8 zlib \
+    && cd zlib && ./configure --static \
+    && make
+
+# open ssl
+ENV CPPFLAGS -mthumb -mfloat-abi=softfp -mfpu=vfp -march=$ARCH  -DANDROID
+ENV OPENSSL_VERSION 1.0.2j
+RUN cd ${WORKSPACE} \
+    && curl -O https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz \
+    && tar -xzf openssl-${OPENSSL_VERSION}.tar.gz \
+    && rm openssl-${OPENSSL_VERSION}.tar.gz \
+    && cd ${WORKSPACE}/openssl-${OPENSSL_VERSION} \
+    && sed -i -e "s/mandroid/target\ armv7\-none\-linux\-androideabi/" Configure \
+    && ./Configure android-armv7 \
+           no-asm \
+           no-shared --static \
+           --with-zlib-include=${WORKSPACE}/zlib/include --with-zlib-lib=${WORKSPACE}/zlib/lib \
+    && make build_crypto build_ssl -j 4 \
+    && cd ${WORKSPACE} && mv openssl-${OPENSSL_VERSION}  openssl
 
 
-#ENV PATH ${WORKSPACE}/qt/5.7/android_armv7/bin:$PATH
+ENV PATH ${WORKSPACE}/Qt-${QT_VERSION}/bin:$PATH
 
+#NB : don't know how to produce a clean environnement to just run make release-static-android
+RUN cd ${WORKSPACE} \
+    && git clone https://github.com/MoroccanMalinois/monero-core.git -b android\
+    && cd monero-core \
+    && git clone https://github.com/monero-project/monero.git \
+    && cd monero \
+    && git fetch origin pull/1510/head:pr-1510 \
+    && git checkout pr-1510 \
+    && cd .. \
+    && ./get_libwallet_api.sh debug-android
+    
+
+RUN cp ${WORKSPACE}/openssl/lib* ${WORKSPACE}/monero-core/monero/lib
+RUN cp ${WORKSPACE}/boost/lib/lib* ${WORKSPACE}/monero-core/monero/lib
+
+# NB : zxcvbn-c needs to build a local binary and Qt don't care about these environnement variable
+RUN cd ${WORKSPACE}/monero-core \
+    && CPPFLAGS="" CC="gcc" CXX="g++" AR="ar" AS="as" LD="ld" RANLIB="ranlib" NM="nm" STRIP="strip" CHOST="" ARCH="" ./build.sh debug-android \
+    && cd build \
+    && make deploy
 
