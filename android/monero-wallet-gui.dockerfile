@@ -163,7 +163,6 @@ RUN cd ${WORKSPACE} \
 
 ENV PATH ${WORKSPACE}/Qt-${QT_VERSION}/bin:$PATH
 
-#NB : don't know how to produce a clean environnement to just run make release-static-android
 RUN cd ${WORKSPACE} \
     && git clone https://github.com/MoroccanMalinois/monero-core.git -b android\
     && cd monero-core \
@@ -171,9 +170,25 @@ RUN cd ${WORKSPACE} \
     && cd monero \
     && git fetch origin pull/1510/head:pr-1510 \
     && git checkout pr-1510 \
-    && cd .. \
-    && ./get_libwallet_api.sh debug-android
-    
+    && cd .. 
+#    && ./get_libwallet_api.sh debug-android
+
+#NB : don't know how to produce a clean environnement to just run get_libwallet_api.sh debug-android
+
+RUN mkdir -p ${WORKSPACE}/monero-core/monero/build/release \
+    && cd ${WORKSPACE}/monero-core/monero/build/release \
+    && cmake -D CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -D STATIC=ON -D ARCH="armv7-a" -D ANDROID=true -D BUILD_GUI_DEPS=ON -D USE_LTO=OFF -D BUILD_TESTS=OFF -D BUILD_DOCUMENTATION=OFF -D INSTALL_VENDORED_LIBUNBOUND=ON \
+           -D ATOMIC=/usr/toolchain-arm/arm-linux-androideabi/lib/armv7-a/libatomic.a \
+           -D OPENSSL_USE_STATIC_LIBS=true -D OPENSSL_ROOT_DIR=/usr/openssl -D OPENSSL_INCLUDE_DIR=/usr/openssl/include \
+           -D BOOST_IGNORE_SYSTEM_PATHS=ON \
+           -D BOOST_ROOT=/usr/boost \
+           -D CMAKE_INSTALL_PREFIX=${WORKSPACE}/monero-core/monero  ../.. \
+    && cd ${WORKSPACE}/monero-core/monero/build/release/src/wallet \
+    && make version -C ../.. \
+    && make -j4 \
+    && make install \
+    && cd ${WORKSPACE}/monero-core/monero/build/release/external/unbound \
+    && make install 
 
 RUN cp ${WORKSPACE}/openssl/lib* ${WORKSPACE}/monero-core/monero/lib
 RUN cp ${WORKSPACE}/boost/lib/lib* ${WORKSPACE}/monero-core/monero/lib
