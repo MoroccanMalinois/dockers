@@ -163,11 +163,16 @@ RUN cd ${WORKSPACE} \
 
 ENV PATH ${WORKSPACE}/Qt-${QT_VERSION}/bin:$PATH
 
+# Zbar
 RUN cd ${WORKSPACE} \
-    && git clone https://github.com/monero-project/monero-core.git \
+    && curl -L https://sourceforge.net/projects/zbar/files/AndroidSDK/ZBarAndroidSDK-0.2.zip/download -o ZBarAndroidSDK-0.2.zip \
+    && unzip ZBarAndroidSDK-0.2.zip \
+    && rm ZBarAndroidSDK-0.2.zip \
+    && git clone https://github.com/ZBar/ZBar.git
+
+RUN cd ${WORKSPACE} \
+    && git clone https://github.com/MoroccanMalinois/monero-core.git -b qrcode \
     && cd monero-core \
-    && git fetch origin pull/370/head:pr-370 \
-    && git checkout pr-370 \
     && git clone https://github.com/monero-project/monero.git \
     && cd monero \
     && git fetch origin pull/1510/head:pr-1510 \
