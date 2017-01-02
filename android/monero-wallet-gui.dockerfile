@@ -4,7 +4,7 @@ MAINTAINER MoroccanMalinois <MoroccanMalinois@protonmail.com>
 #INSTALL JAVA
 RUN echo "deb http://ftp.fr.debian.org/debian/ jessie-backports main contrib" >> /etc/apt/sources.list
 RUN dpkg --add-architecture i386 && apt-get update
-RUN apt-get install -y libc6:i386 libncurses5:i386 libstdc++6:i386 libz1:i386 \
+RUN apt-get update && apt-get install -y libc6:i386 libncurses5:i386 libstdc++6:i386 libz1:i386 \
     openjdk-8-jdk-headless openjdk-8-jre-headless ant \
     libdbus-1-3 libglib2.0-0 unzip make python git build-essential wget
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
