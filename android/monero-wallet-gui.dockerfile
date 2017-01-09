@@ -3,10 +3,11 @@ MAINTAINER MoroccanMalinois <MoroccanMalinois@protonmail.com>
 
 #INSTALL JAVA
 RUN echo "deb http://ftp.fr.debian.org/debian/ jessie-backports main contrib" >> /etc/apt/sources.list
-RUN dpkg --add-architecture i386 && apt-get update
-RUN apt-get update && apt-get install -y libc6:i386 libncurses5:i386 libstdc++6:i386 libz1:i386 \
-    openjdk-8-jdk-headless openjdk-8-jre-headless ant \
-    libdbus-1-3 libglib2.0-0 unzip make python git build-essential wget
+RUN dpkg --add-architecture i386 \
+    && apt-get update \
+    && apt-get install -y libc6:i386 libncurses5:i386 libstdc++6:i386 libz1:i386 \
+       openjdk-8-jdk-headless openjdk-8-jre-headless ant \
+       unzip make python git build-essential wget
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
 ENV PATH $JAVA_HOME/bin:$PATH
 
@@ -15,7 +16,7 @@ ENV WORKSPACE /usr
 #INSTALL ANDROID SDK
 #COPY android-sdk_r24.4.1-linux.tgz  ${WORKSPACE}/android-sdk_r24.4.1-linux.tgz
 RUN cd ${WORKSPACE} \
-    && wget http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz \
+    && wget -q http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz \
     && tar --no-same-owner -xzf android-sdk_r24.4.1-linux.tgz \
     && rm -f ${WORKSPACE}/android-sdk_r24.4.1-linux.tgz
 
@@ -27,8 +28,8 @@ ENV PATH $PATH:$ANDROID_SDK_ROOT/platform-tools
 ENV ANDROID_NDK_REVISION 14-beta1
 #COPY android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip ${WORKSPACE}/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip
 RUN cd ${WORKSPACE} \
-    && wget https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
-    && unzip android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
+    && wget -q https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
+    && unzip -qq android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
     && rm -f ${WORKSPACE}/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip
 ENV ANDROID_NDK_ROOT ${WORKSPACE}/android-ndk-r${ANDROID_NDK_REVISION}
 
@@ -98,7 +99,7 @@ ENV BOOST_VERSION 1_62_0
 ENV BOOST_VERSION_DOT 1.62.0
 #COPY boost_${BOOST_VERSION}.tar.bz2 ${WORKSPACE}/boost_${BOOST_VERSION}.tar.bz2
 RUN cd ${WORKSPACE} \
-    && wget https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION_DOT}/boost_${BOOST_VERSION}.tar.bz2/download -O  boost_${BOOST_VERSION}.tar.bz2\
+    && wget -q https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION_DOT}/boost_${BOOST_VERSION}.tar.bz2/download -O  boost_${BOOST_VERSION}.tar.bz2\
     && tar -xvf boost_${BOOST_VERSION}.tar.bz2 \
     && rm -f ${WORKSPACE}/boost_${BOOST_VERSION}.tar.bz2
 
@@ -114,7 +115,7 @@ RUN cd ${WORKSPACE}/boost_${BOOST_VERSION} \
 # don't use 3.7 : https://github.com/android-ndk/ndk/issues/254
 ENV CMAKE_VERSION 3.6.3
 RUN cd ${WORKSPACE} \
-    && wget https://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
+    && wget -q https://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
     && tar -xvzf ${WORKSPACE}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
     && rm -f ${WORKSPACE}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz
 ENV PATH ${WORKSPACE}/cmake-${CMAKE_VERSION}-Linux-x86_64/bin:$PATH
@@ -136,11 +137,12 @@ ENV ARCH armv7-a
 ENV CXXFLAGS -std=c++11
 
 # download, configure and make Zlib
+ENV ZLIB_VERSION 1.2.10
 RUN cd ${WORKSPACE} \
-    && curl -O http://zlib.net/zlib-1.2.8.tar.gz \
-    && tar -xzf zlib-1.2.8.tar.gz \
-    && rm zlib-1.2.8.tar.gz \
-    && mv zlib-1.2.8 zlib \
+    && curl -O http://zlib.net/zlib-${ZLIB_VERSION}.tar.gz \
+    && tar -xzf zlib-${ZLIB_VERSION}.tar.gz \
+    && rm zlib-${ZLIB_VERSION}.tar.gz \
+    && mv zlib-${ZLIB_VERSION} zlib \
     && cd zlib && ./configure --static \
     && make
 
@@ -166,12 +168,8 @@ ENV PATH ${WORKSPACE}/Qt-${QT_VERSION}/bin:$PATH
 RUN cd ${WORKSPACE} \
     && git clone https://github.com/monero-project/monero-core.git \
     && cd monero-core \
-    && git fetch origin pull/370/head:pr-370 \
-    && git checkout pr-370 \
     && git clone https://github.com/monero-project/monero.git \
     && cd monero \
-    && git fetch origin pull/1510/head:pr-1510 \
-    && git checkout pr-1510 \
     && cd .. 
 #    && ./get_libwallet_api.sh debug-android
 
