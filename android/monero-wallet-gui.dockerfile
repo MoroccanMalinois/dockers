@@ -163,8 +163,31 @@ RUN cd ${WORKSPACE} \
     && cd ${WORKSPACE} && mv openssl-${OPENSSL_VERSION}  openssl
 
 
-ENV PATH ${WORKSPACE}/Qt-${QT_VERSION}/bin:$PATH
+# Get iconv and ZBar
+ENV ICONV_VERSION 1.14
+RUN cd ${WORKSPACE} \
+    && git clone https://github.com/ZBar/ZBar.git \
+    && wget -q http://ftp.gnu.org/pub/gnu/libiconv/libiconv-${ICONV_VERSION}.tar.gz \
+    && tar -xzf libiconv-${ICONV_VERSION}.tar.gz \
+    && cd libiconv-${ICONV_VERSION} \
+    && ./configure --build=x86_64-linux-gnu --host=arm-eabi --prefix=/usr/libiconv --disable-rpath 
 
+#Build libiconv.a and libzbarjni.a
+COPY android.mk.patch ${WORKSPACE}/ZBar/android.mk.patch
+RUN cd ${WORKSPACE}/ZBar \
+    && git apply android.mk.patch \
+    && echo \
+"APP_ABI := armeabi-v7a \n\
+APP_STL := c++_shared \n\
+TARGET_PLATFORM := ${ANDROID_API} \n\
+TARGET_ARCH_ABI := armeabi-v7a \n\
+APP_CFLAGS +=  -target armv7-none-linux-androideabi -fexceptions -fstack-protector-strong -fno-limit-debug-info -mfloat-abi=softfp -mfpu=vfp -fno-builtin-memmove -fno-omit-frame-pointer -fno-stack-protector\n"\
+        >> ${WORKSPACE}/ZBar/android/jni/Application.mk \
+    && cd ${WORKSPACE}/ZBar/android \
+    && android update project --path . -t "${ANDROID_API}" \
+    && ant -Dndk.dir=${ANDROID_NDK_ROOT} -Diconv.src=${WORKSPACE}/libiconv-${ICONV_VERSION} zbar-clean zbar-ndk-build
+
+ENV PATH ${WORKSPACE}/Qt-${QT_VERSION}/bin:$PATH
 RUN cd ${WORKSPACE} \
     && git clone https://github.com/monero-project/monero-core.git \
     && cd monero-core \
