@@ -82,7 +82,7 @@ RUN cd ${WORKSPACE}/qt5 \
     && make -j4 \
     && make install
 
-ENV PATH ${WORKSPACE}/qt5/5.7/android_armv7/bin:$PATH
+ENV PATH ${WORKSPACE}/qt5/${QT_VERSION}/android_armv7/bin:$PATH
 
 #Setup Android toolchain
 ENV TOOLCHAIN_DIR ${WORKSPACE}/toolchain-arm
