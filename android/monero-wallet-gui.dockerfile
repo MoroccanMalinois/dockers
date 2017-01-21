@@ -137,7 +137,7 @@ ENV ARCH armv7-a
 ENV CXXFLAGS -std=c++11
 
 # download, configure and make Zlib
-ENV ZLIB_VERSION 1.2.10
+ENV ZLIB_VERSION 1.2.11
 RUN cd ${WORKSPACE} \
     && curl -O http://zlib.net/zlib-${ZLIB_VERSION}.tar.gz \
     && tar -xzf zlib-${ZLIB_VERSION}.tar.gz \
