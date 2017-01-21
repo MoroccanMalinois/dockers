@@ -85,11 +85,12 @@ ENV ARCH armv7-a
 ENV CXXFLAGS -std=c++11
 
 # download, configure and make Zlib
+ENV ZLIB_VERSION 1.2.11
 RUN cd /usr \
-    && curl -O http://zlib.net/zlib-1.2.8.tar.gz \
-    && tar -xzf zlib-1.2.8.tar.gz \
-    && rm zlib-1.2.8.tar.gz \
-    && mv zlib-1.2.8 zlib \
+    && curl -O http://zlib.net/zlib-${ZLIB_VERSION}.tar.gz \
+    && tar -xzf zlib-${ZLIB_VERSION}.tar.gz \
+    && rm zlib-${ZLIB_VERSION}.tar.gz \
+    && mv zlib-${ZLIB_VERSION} zlib \
     && cd zlib && ./configure --static \
     && make 
 
@@ -114,9 +115,6 @@ RUN cd /usr \
 RUN cd /usr \
     && git clone https://github.com/monero-project/monero.git \
     && cd monero \
-    && git fetch origin pull/1510/head:pr-1510 \
-    && git checkout pr-1510 \
-    && mkdir build \
     && mkdir build/release \
     && cd build/release && cmake \
         -D OPENSSL_USE_STATIC_LIBS=true -D OPENSSL_ROOT_DIR=/usr/openssl -D OPENSSL_INCLUDE_DIR=/usr/openssl/include \
