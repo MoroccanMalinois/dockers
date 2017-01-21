@@ -188,33 +188,29 @@ APP_CFLAGS +=  -target armv7-none-linux-androideabi -fexceptions -fstack-protect
     && ant -Dndk.dir=${ANDROID_NDK_ROOT} -Diconv.src=${WORKSPACE}/libiconv-${ICONV_VERSION} zbar-clean zbar-ndk-build
 
 ENV PATH ${WORKSPACE}/Qt-${QT_VERSION}/bin:$PATH
+
+RUN cp ${WORKSPACE}/openssl/lib* ${ANDROID_NDK_ROOT}/platforms/${ANDROID_API}/arch-arm/usr/lib
+RUN cp ${WORKSPACE}/boost/lib/lib* ${ANDROID_NDK_ROOT}/platforms/${ANDROID_API}/arch-arm/usr/lib
+
+#Can't directly call build.sh because of env variables
 RUN cd ${WORKSPACE} \
     && git clone https://github.com/monero-project/monero-core.git \
     && cd monero-core \
-    && git clone https://github.com/monero-project/monero.git \
+    && git submodule init monero \
+    && git submodule update \
     && cd monero \
-    && cd .. 
-#    && ./get_libwallet_api.sh debug-android
+    && git remote add perso https://github.com/MoroccanMalinois/monero.git \
+    && git fetch perso atomic \
+    && git config user.email MoroccanMalinois@protonmail.com \
+    && git config user.name MoroccanMalinois \
+    && git checkout -b atomic \
+    && git cherry-pick 98c6ae861ed61905a80a571bbcee4eb53920ce78 \
+    && cd .. \
+    && git add monero \
+    && OPENSSL_ROOT_DIR=/usr/openssl OPENSSL_INCLUDE_DIR=/usr/openssl/include BOOST_IGNORE_SYSTEM_PATHS=ON BOOST_ROOT=/usr/boost ./get_libwallet_api.sh debug-android
 
-#NB : don't know how to produce a clean environnement to just run get_libwallet_api.sh debug-android
-
-RUN mkdir -p ${WORKSPACE}/monero-core/monero/build/release \
-    && cd ${WORKSPACE}/monero-core/monero/build/release \
-    && cmake -D CMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -D STATIC=ON -D ARCH="armv7-a" -D ANDROID=true -D BUILD_GUI_DEPS=ON -D USE_LTO=OFF -D BUILD_TESTS=OFF -D BUILD_DOCUMENTATION=OFF -D INSTALL_VENDORED_LIBUNBOUND=ON \
-           -D ATOMIC=/usr/toolchain-arm/arm-linux-androideabi/lib/armv7-a/libatomic.a \
-           -D OPENSSL_USE_STATIC_LIBS=true -D OPENSSL_ROOT_DIR=/usr/openssl -D OPENSSL_INCLUDE_DIR=/usr/openssl/include \
-           -D BOOST_IGNORE_SYSTEM_PATHS=ON \
-           -D BOOST_ROOT=/usr/boost \
-           -D CMAKE_INSTALL_PREFIX=${WORKSPACE}/monero-core/monero  ../.. \
-    && cd ${WORKSPACE}/monero-core/monero/build/release/src/wallet \
-    && make version -C ../.. \
-    && make -j4 \
-    && make install \
-    && cd ${WORKSPACE}/monero-core/monero/build/release/external/unbound \
-    && make install 
-
-RUN cp ${WORKSPACE}/openssl/lib* ${WORKSPACE}/monero-core/monero/lib
-RUN cp ${WORKSPACE}/boost/lib/lib* ${WORKSPACE}/monero-core/monero/lib
+RUN cd ${WORKSPACE}/monero-core \
+    && echo "GUI_MONERO_VERSION=\"51d2bcb\"" > monero/version.sh
 
 # NB : zxcvbn-c needs to build a local binary and Qt don't care about these environnement variable
 RUN cd ${WORKSPACE}/monero-core \
