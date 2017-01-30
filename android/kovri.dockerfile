@@ -111,7 +111,7 @@ RUN cd /usr \
     && cd /usr && mv openssl-${OPENSSL_VERSION}  openssl
 
 RUN cd /usr \
-    && git clone https://github.com/MoroccanMalinois/kovri.git --recursive \
+    && git clone https://github.com/MoroccanMalinois/kovri.git -b android --recursive \
     && cd kovri 
-#    && OPENSSL_ROOT_DIR=/usr/openssl OPENSSL_INCLUDE_DIR=/usr/openssl/include BOOST_ROOT=/usr/boost make static
+    && OPENSSL_ROOT_DIR=/usr/openssl OPENSSL_INCLUDE_DIR=/usr/openssl/include BOOST_ROOT=/usr/boost make release-static-android
 
