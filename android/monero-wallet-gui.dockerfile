@@ -148,7 +148,7 @@ RUN cd ${WORKSPACE} \
 
 # open ssl
 ENV CPPFLAGS -mthumb -mfloat-abi=softfp -mfpu=vfp -march=$ARCH  -DANDROID
-ENV OPENSSL_VERSION 1.0.2j
+ENV OPENSSL_VERSION 1.0.2k
 RUN cd ${WORKSPACE} \
     && curl -O https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz \
     && tar -xzf openssl-${OPENSSL_VERSION}.tar.gz \
