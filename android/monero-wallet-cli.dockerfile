@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y unzip \
 #INSTALL ANDROID SDK
 #COPY android-sdk_r24.4.1-linux.tgz  /usr/android-sdk_r24.4.1-linux.tgz
 RUN cd /usr \
-    && wget http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz \
+    && wget -q http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz \
     && tar --no-same-owner -xzf android-sdk_r24.4.1-linux.tgz \
     && rm -f /usr/android-sdk_r24.4.1-linux.tgz
 
@@ -26,7 +26,7 @@ ENV PATH $PATH:$ANDROID_SDK_ROOT/platform-tools
 ENV ANDROID_NDK_REVISION 14-beta1
 #COPY android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip /usr/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip
 RUN cd /usr \
-    && wget https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
+    && wget -q https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
     && unzip android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
     && rm -f /usr/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip
 ENV ANDROID_NDK_ROOT /usr/android-ndk-r${ANDROID_NDK_REVISION}
@@ -46,7 +46,7 @@ ENV BOOST_VERSION 1_62_0
 ENV BOOST_VERSION_DOT 1.62.0
 #COPY boost_${BOOST_VERSION}.tar.bz2 /usr/boost_${BOOST_VERSION}.tar.bz2
 RUN cd /usr \
-    && wget https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION_DOT}/boost_${BOOST_VERSION}.tar.bz2/download -O  boost_${BOOST_VERSION}.tar.bz2\
+    && wget -q https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION_DOT}/boost_${BOOST_VERSION}.tar.bz2/download -O  boost_${BOOST_VERSION}.tar.bz2\
     && tar -xvf boost_${BOOST_VERSION}.tar.bz2 \
     && rm -f /usr/boost_${BOOST_VERSION}.tar.bz2
 
@@ -62,7 +62,7 @@ RUN cd /usr/boost_${BOOST_VERSION} \
 # don't use 3.7 : https://github.com/android-ndk/ndk/issues/254
 ENV CMAKE_VERSION 3.6.3
 RUN cd /usr \
-    && wget https://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
+    && wget -q https://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
     && tar -xvzf /usr/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
     && rm -f /usr/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz
 ENV PATH /usr/cmake-${CMAKE_VERSION}-Linux-x86_64/bin:$PATH
