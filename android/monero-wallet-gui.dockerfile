@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:testing
 MAINTAINER MoroccanMalinois <MoroccanMalinois@protonmail.com>
 
 #INSTALL JAVA
@@ -196,21 +196,8 @@ RUN cp ${WORKSPACE}/boost/lib/lib* ${ANDROID_NDK_ROOT}/platforms/${ANDROID_API}/
 RUN cd ${WORKSPACE} \
     && git clone https://github.com/monero-project/monero-core.git \
     && cd monero-core \
-    && git submodule init monero \
     && git submodule update \
-    && cd monero \
-    && git remote add perso https://github.com/MoroccanMalinois/monero.git \
-    && git fetch perso atomic \
-    && git config user.email MoroccanMalinois@protonmail.com \
-    && git config user.name MoroccanMalinois \
-    && git checkout -b atomic \
-    && git cherry-pick 98c6ae861ed61905a80a571bbcee4eb53920ce78 \
-    && cd .. \
-    && git add monero \
     && OPENSSL_ROOT_DIR=/usr/openssl OPENSSL_INCLUDE_DIR=/usr/openssl/include BOOST_IGNORE_SYSTEM_PATHS=ON BOOST_ROOT=/usr/boost ./get_libwallet_api.sh debug-android
-
-RUN cd ${WORKSPACE}/monero-core \
-    && echo "GUI_MONERO_VERSION=\"51d2bcb\"" > monero/version.sh
 
 # NB : zxcvbn-c needs to build a local binary and Qt don't care about these environnement variable
 RUN cd ${WORKSPACE}/monero-core \
