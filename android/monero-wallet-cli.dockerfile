@@ -115,7 +115,7 @@ RUN cd /usr \
 RUN cd /usr \
     && git clone https://github.com/monero-project/monero.git \
     && cd monero \
-    && mkdir build/release \
+    && mkdir -p build/release \
     && cd build/release && cmake \
         -D OPENSSL_USE_STATIC_LIBS=true -D OPENSSL_ROOT_DIR=/usr/openssl -D OPENSSL_INCLUDE_DIR=/usr/openssl/include \
         -D BOOST_IGNORE_SYSTEM_PATHS=ON -D BOOST_ROOT=/usr/boost \
