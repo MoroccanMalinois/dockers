@@ -12,19 +12,17 @@ RUN apt-get update && apt-get install -y unzip \
     python
 
 #INSTALL ANDROID SDK
-#COPY android-sdk_r24.4.1-linux.tgz  /usr/android-sdk_r24.4.1-linux.tgz
+
 RUN cd /usr \
     && wget -q http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz \
     && tar --no-same-owner -xzf android-sdk_r24.4.1-linux.tgz \
     && rm -f /usr/android-sdk_r24.4.1-linux.tgz
 
 ENV ANDROID_SDK_ROOT /usr/android-sdk-linux
-ENV PATH $PATH:$ANDROID_SDK_ROOT/tools
-ENV PATH $PATH:$ANDROID_SDK_ROOT/platform-tools
+ENV PATH $ANDROID_SDK_ROOT/tools:$ANDROID_SDK_ROOT/platform-tools:$PATH
 
 #INSTALL ANDROID NDK
-ENV ANDROID_NDK_REVISION 14-beta1
-#COPY android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip /usr/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip
+ENV ANDROID_NDK_REVISION 14b
 RUN cd /usr \
     && wget -q https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
     && unzip android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
@@ -39,7 +37,7 @@ RUN $ANDROID_NDK_ROOT/build/tools/make_standalone_toolchain.py \
          --stl=libc++
 
 ENV SYSROOT $TOOLCHAIN_DIR/sysroot
-ENV PATH $PATH:$TOOLCHAIN_DIR/bin:$SYSROOT/usr/local/bin
+ENV PATH $TOOLCHAIN_DIR/bin:$SYSROOT/usr/local/bin:$PATH
 
 #INSTALL BOOST
 ENV BOOST_VERSION 1_62_0
@@ -68,7 +66,7 @@ RUN cd /usr \
 ENV PATH /usr/cmake-${CMAKE_VERSION}-Linux-x86_64/bin:$PATH
 
 ENV SYSROOT $TOOLCHAIN_DIR/sysroot
-ENV PATH $PATH:$TOOLCHAIN_DIR/bin:$SYSROOT/usr/local/bin
+ENV PATH $TOOLCHAIN_DIR/bin:$SYSROOT/usr/local/bin:$PATH
 
 # Configure toolchain path
 #ENV CROSS_COMPILE arm-linux-androideabi
@@ -110,18 +108,13 @@ RUN cd /usr \
     && make build_crypto build_ssl -j 4 \
     && cd /usr && mv openssl-${OPENSSL_VERSION}  openssl
 
-#NB : don't know how to produce a clean environnement to just run make release-static-android
-#NB2 : only build simplewallet because fails for monerod
+#NB : only build simplewallet because fails for monerod
 RUN cd /usr \
     && git clone https://github.com/monero-project/monero.git \
     && cd monero \
     && mkdir -p build/release \
-    && cd build/release && cmake \
-        -D OPENSSL_USE_STATIC_LIBS=true -D OPENSSL_ROOT_DIR=/usr/openssl -D OPENSSL_INCLUDE_DIR=/usr/openssl/include \
-        -D BOOST_IGNORE_SYSTEM_PATHS=ON -D BOOST_ROOT=/usr/boost \
-        -D ATOMIC=/usr/toolchain-arm/arm-linux-androideabi/lib/armv7-a/libatomic.a \
-        -D BUILD_TESTS=OFF -D ARCH="armv7-a" -D STATIC=ON -D BUILD_64=OFF -D CMAKE_BUILD_TYPE=release -D ANDROID=true -D INSTALL_VENDORED_LIBUNBOUND=ON ../.. \
-    && cd src/simplewallet \
+    && BOOST_ROOT=/usr/boost OPENSSL_ROOT_DIR=/usr/openssl make release-static-android \
+    && cd build/release/src/simplewallet \
     && make -j4 
 
 
