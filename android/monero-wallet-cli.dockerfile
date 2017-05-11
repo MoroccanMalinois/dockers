@@ -1,120 +1,81 @@
 FROM debian:jessie
-MAINTAINER MoroccanMalinois@protonmail.com
 
-RUN apt-get update && apt-get install -y unzip \
-    automake \
-    build-essential \
-    wget \
-    curl \
-    file \
-    pkg-config \
-    git \
-    python
+RUN apt-get update && apt-get install -y unzip automake build-essential curl file pkg-config git python
 
-#INSTALL ANDROID SDK
-
-RUN cd /usr \
-    && wget -q http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz \
+WORKDIR /opt/android
+## INSTALL ANDROID SDK
+RUN curl -s -O http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz \
     && tar --no-same-owner -xzf android-sdk_r24.4.1-linux.tgz \
-    && rm -f /usr/android-sdk_r24.4.1-linux.tgz
+    && rm -f android-sdk_r24.4.1-linux.tgz
 
-ENV ANDROID_SDK_ROOT /usr/android-sdk-linux
-ENV PATH $ANDROID_SDK_ROOT/tools:$ANDROID_SDK_ROOT/platform-tools:$PATH
-
-#INSTALL ANDROID NDK
+## INSTALL ANDROID NDK
 ENV ANDROID_NDK_REVISION 14b
-RUN cd /usr \
-    && wget -q https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
+RUN curl -s -O https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
     && unzip android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip \
-    && rm -f /usr/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip
-ENV ANDROID_NDK_ROOT /usr/android-ndk-r${ANDROID_NDK_REVISION}
+    && rm -f android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip
 
-ENV TOOLCHAIN_DIR /usr/toolchain-arm
-RUN $ANDROID_NDK_ROOT/build/tools/make_standalone_toolchain.py \
+ENV WORKDIR /opt/android
+ENV ANDROID_SDK_ROOT ${WORKDIR}/android-sdk-linux
+ENV ANDROID_NDK_ROOT ${WORKDIR}/android-ndk-r${ANDROID_NDK_REVISION}
+
+## INSTALL BOOST
+ENV BOOST_VERSION 1_62_0
+ENV BOOST_VERSION_DOT 1.62.0
+RUN curl -s -L -o  boost_${BOOST_VERSION}.tar.bz2 https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION_DOT}/boost_${BOOST_VERSION}.tar.bz2/download \
+    && tar -xvf boost_${BOOST_VERSION}.tar.bz2 \
+    && rm -f /usr/boost_${BOOST_VERSION}.tar.bz2 \
+    && cd boost_${BOOST_VERSION} \
+    && ./bootstrap.sh
+
+ENV TOOLCHAIN_DIR ${WORKDIR}/toolchain-arm
+RUN ${ANDROID_NDK_ROOT}/build/tools/make_standalone_toolchain.py \
          --arch arm \
          --api 21 \
          --install-dir $TOOLCHAIN_DIR \
          --stl=libc++
+ENV PATH $TOOLCHAIN_DIR/arm-linux-androideabi/bin:$TOOLCHAIN_DIR/bin:$PATH
 
-ENV SYSROOT $TOOLCHAIN_DIR/sysroot
-ENV PATH $TOOLCHAIN_DIR/bin:$SYSROOT/usr/local/bin:$PATH
+## Build BOOST
+RUN cd boost_${BOOST_VERSION} \
+    && ./b2 --build-type=minimal link=static runtime-link=static --with-chrono --with-date_time --with-filesystem --with-program_options --with-regex --with-serialization --with-system --with-thread --build-dir=android32 --stagedir=android32 toolset=clang threading=multi threadapi=pthread target-os=android stage
 
-#INSTALL BOOST
-ENV BOOST_VERSION 1_62_0
-ENV BOOST_VERSION_DOT 1.62.0
-#COPY boost_${BOOST_VERSION}.tar.bz2 /usr/boost_${BOOST_VERSION}.tar.bz2
-RUN cd /usr \
-    && wget -q https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION_DOT}/boost_${BOOST_VERSION}.tar.bz2/download -O  boost_${BOOST_VERSION}.tar.bz2\
-    && tar -xvf boost_${BOOST_VERSION}.tar.bz2 \
-    && rm -f /usr/boost_${BOOST_VERSION}.tar.bz2
-
-RUN echo "import tools ; \
-using gcc : arm : arm-linux-androideabi-clang++ ; \
-option.set keep-going : false ; " > ~/user-config.jam
-
-RUN cd /usr/boost_${BOOST_VERSION} \
-    && ./bootstrap.sh --prefix=/usr/boost  --with-libraries=serialization,thread,system,date_time,filesystem,regex,chrono,program_options \
-    && ./b2 toolset=gcc-arm link=static install
-
-#INSTALL cmake
-# don't use 3.7 : https://github.com/android-ndk/ndk/issues/254
+#INSTALL cmake (avoid 3.7 : https://github.com/android-ndk/ndk/issues/254)
 ENV CMAKE_VERSION 3.6.3
 RUN cd /usr \
-    && wget -q https://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
-    && tar -xvzf /usr/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
+    && curl -s -O https://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
+    && tar -xzf /usr/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz \
     && rm -f /usr/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz
 ENV PATH /usr/cmake-${CMAKE_VERSION}-Linux-x86_64/bin:$PATH
 
-ENV SYSROOT $TOOLCHAIN_DIR/sysroot
-ENV PATH $TOOLCHAIN_DIR/bin:$SYSROOT/usr/local/bin:$PATH
-
-# Configure toolchain path
-#ENV CROSS_COMPILE arm-linux-androideabi
 ENV CC arm-linux-androideabi-clang
 ENV CXX arm-linux-androideabi-clang++
-ENV AR arm-linux-androideabi-ar
-ENV AS arm-linux-androideabi-as
-ENV LD arm-linux-androideabi-ld
-ENV RANLIB arm-linux-androideabi-ranlib
-ENV NM arm-linux-androideabi-nm
-ENV STRIP arm-linux-androideabi-strip
-ENV CHOST arm-linux-androideabi
-ENV ARCH armv7-a
-ENV CXXFLAGS -std=c++11
+
+#Note : we build openssl because the default lacks DSA1
 
 # download, configure and make Zlib
 ENV ZLIB_VERSION 1.2.11
-RUN cd /usr \
-    && curl -O http://zlib.net/zlib-${ZLIB_VERSION}.tar.gz \
+RUN curl -s -O http://zlib.net/zlib-${ZLIB_VERSION}.tar.gz \
     && tar -xzf zlib-${ZLIB_VERSION}.tar.gz \
     && rm zlib-${ZLIB_VERSION}.tar.gz \
     && mv zlib-${ZLIB_VERSION} zlib \
     && cd zlib && ./configure --static \
-    && make 
-
+    && make
 # open ssl
 ENV CPPFLAGS -mthumb -mfloat-abi=softfp -mfpu=vfp -march=$ARCH  -DANDROID
 ENV OPENSSL_VERSION 1.0.2k
-RUN cd /usr \
-    && curl -O https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz \
+RUN curl -s -O https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz \
     && tar -xzf openssl-${OPENSSL_VERSION}.tar.gz \
     && rm openssl-${OPENSSL_VERSION}.tar.gz \
-    && cd /usr/openssl-${OPENSSL_VERSION} \
+    && cd openssl-${OPENSSL_VERSION} \
     && sed -i -e "s/mandroid/target\ armv7\-none\-linux\-androideabi/" Configure \
     && ./Configure android-armv7 \
            no-asm \
            no-shared --static \
-           --with-zlib-include=/usr/zlib/include --with-zlib-lib=/usr/zlib/lib \
+           --with-zlib-include=${WORKDIR}/zlib/include --with-zlib-lib=${WORKDIR}/zlib/lib \
     && make build_crypto build_ssl -j 4 \
-    && cd /usr && mv openssl-${OPENSSL_VERSION}  openssl
+    && cd .. && mv openssl-${OPENSSL_VERSION}  openssl
 
-#NB : only build simplewallet because fails for monerod
-RUN cd /usr \
-    && git clone https://github.com/monero-project/monero.git \
+RUN git clone https://github.com/monero-project/monero.git \
     && cd monero \
     && mkdir -p build/release \
-    && BOOST_ROOT=/usr/boost OPENSSL_ROOT_DIR=/usr/openssl make release-static-android \
-    && cd build/release/src/simplewallet \
-    && make -j4 
-
-
+    && BOOST_ROOT=/opt/android/boost_1_62_0 BOOST_LIBRARYDIR=${WORKDIR}/boost_${BOOST_VERSION}/android32/lib/  OPENSSL_ROOT_DIR=${WORKDIR}/openssl/ make release-static-android
